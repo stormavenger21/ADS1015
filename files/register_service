@@ -1,0 +1,15 @@
+{
+  "targetSystem": "Cockpit",
+  "targetCockpitApiVersion": "1.0.0",
+  "widgets": [
+    {
+      "name": "ADS1015",
+      "iframeUrl": "/depth.html",
+      "iframeIcon": "mdi-thermometer",
+      "version": "1.0.0",
+      "startCollapsed": false,
+      "useExtensionPathAsBaseUrl": true
+    }
+  ],
+  "actions": []
+}
