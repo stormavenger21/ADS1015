@@ -13,5 +13,8 @@ channel = AnalogIn(ads, ads1x15.Pin.A0)
 
 # Continuously read voltage
 while True:
-    print(f"Voltage: {channel.voltage:.3f} V")
+    try: 
+        print(f"Voltage: {channel.voltage:.3f} V")
+    except:
+        print("Error Reading Pressure Sensor")
     time.sleep(0.5)
