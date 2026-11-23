@@ -28,7 +28,7 @@ while True:
         print(f"Pressure: \t{PRESSURE:.2f} Mpa")
 
         DEPTH = (PRESSURE*1000000)/(WATER_DENSITY/ACCELERATION)
-        print(f"Depth: \t\t {DEPTH:.2f} m\n")
+        print(f"Depth: \t\t{DEPTH:.2f} m\n")
     except:
         print("Error Reading Pressure Sensor")
     time.sleep(0.5)
