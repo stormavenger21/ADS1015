@@ -1,74 +1,70 @@
-#include <iostream>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <linux/i2c-dev.h>
-#include <cstdint>
+#include <Adafruit_ADS1X15.h>
 
-int main() {
-    const char* device = "/dev/i2c-1";
-    const int ads1015_addr = 0x48; // Default address when ADDR pin is tied to GND
+// Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
+Adafruit_ADS1015 ads;     /* Use this for the 12-bit version */
 
-    // ADS1015 Register Pointers
-    const uint8_t REG_CONVERSION = 0x00;
-    const uint8_t REG_CONFIG     = 0x01;
+// Pin connected to the ALERT/RDY signal for new sample notification.
+constexpr int READY_PIN = 3;
 
-    // 1. Open I2C bus
-    int file = open(device, O_RDWR);
-    if (file < 0) {
-        std::cerr << "Failed to open /dev/i2c-1\n";
-        return 1;
-    }
+// This is required on ESP32 to put the ISR in IRAM. Define as
+// empty for other platforms. Be careful - other platforms may have
+// other requirements.
+#ifndef IRAM_ATTR
+#define IRAM_ATTR
+#endif
 
-    // 2. Connect to ADS1015
-    if (ioctl(file, I2C_SLAVE, ads1015_addr) < 0) {
-        std::cerr << "Failed to connect to ADS1015 at 0x48\n";
-        close(file);
-        return 1;
-    }
+volatile bool new_data = false;
+void IRAM_ATTR NewDataReadyISR() {
+  new_data = true;
+}
 
-    // 3. Configure single-shot conversion on AIN0, +/-4.096V range, 1600 SPS
-    // Config bits: OS=1 (start), MUX=100 (AIN0 vs GND), PGA=001 (+/-4.096V), MODE=1 (single-shot) -> 0xC3
-    // Lower byte:  DR=100 (1600 SPS), COMP_QUE=11 (disable comparator) -> 0x83
-    uint8_t config = {REG_CONFIG, 0xC3, 0x83};
-    if (write(file, config, 3) != 3) {
-        std::cerr << "Failed to write configuration register\n";
-        close(file);
-        return 1;
-    }
+void setup(void)
+{
+  Serial.begin(9600);
+  Serial.println("Hello!");
 
-    // 4. Wait for conversion to finish (~1ms at 1600 SPS; 2ms gives plenty of margin)
-    usleep(2000);
+  Serial.println("Getting differential reading from AIN0 (P) and AIN1 (N)");
+  Serial.println("ADC Range: +/- 6.144V (1 bit = 3mV/ADS1015, 0.1875mV/ADS1115)");
 
-    // 5. Point to the Conversion Register (0x00)
-    if (write(file, &REG_CONVERSION, 1) != 1) {
-        std::cerr << "Failed to select conversion register\n";
-        close(file);
-        return 1;
-    }
+  // The ADC input range (or gain) can be changed via the following
+  // functions, but be careful never to exceed VDD +0.3V max, or to
+  // exceed the upper and lower limits if you adjust the input range!
+  //                                                                ADS1015  ADS1115
+  //                                                                -------  -------
+  // ads.setGain(GAIN_TWOTHIRDS);  // 2/3x gain +/- 6.144V  1 bit = 3mV      0.1875mV (default)
+  // ads.setGain(GAIN_ONE);        // 1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
+  // ads.setGain(GAIN_TWO);        // 2x gain   +/- 2.048V  1 bit = 1mV      0.0625mV
+  // ads.setGain(GAIN_FOUR);       // 4x gain   +/- 1.024V  1 bit = 0.5mV    0.03125mV
+  // ads.setGain(GAIN_EIGHT);      // 8x gain   +/- 0.512V  1 bit = 0.25mV   0.015625mV
+  // ads.setGain(GAIN_SIXTEEN);    // 16x gain  +/- 0.256V  1 bit = 0.125mV  0.0078125mV
 
-    // 6. Read 2 bytes of conversion data
-    uint8_t data = {0};
-    if (read(file, data, 2) != 2) {
-        std::cerr << "Failed to read conversion data\n";
-        close(file);
-        return 1;
-    }
+  if (!ads.begin()) {
+    Serial.println("Failed to initialize ADS.");
+    while (1);
+  }
 
-    // 7. Combine bytes and right-shift 4 bits (ADS1015 is 12-bit left-justified in 16 bits)
-    int16_t raw_adc = ((data << 8) | data) >> 4;
+  pinMode(READY_PIN, INPUT);
+  // With default COMP_POL=0, get a rising edge every time a new sample is ready.
+  attachInterrupt(digitalPinToInterrupt(READY_PIN), NewDataReadyISR, RISING);
 
-    // Handle negative values for 12-bit two's complement
-    if (raw_adc > 2047) {
-        raw_adc -= 4096;
-    }
+  // Start continuous conversions.
+  ads.startADCReading(ADS1X15_REG_CONFIG_MUX_DIFF_0_1, /*continuous=*/true);
+}
 
-    // Convert to volts: at +/-4.096V range, 1 LSB = 2mV (0.002V)
-    double voltage = raw_adc * 0.002;
+void loop(void)
+{
+  // If we don't have new data, skip this iteration.
+  if (!new_data) {
+    return;
+  }
 
-    std::cout << "Raw 12-bit value: " << raw_adc << "\n";
-    std::cout << "Voltage (AIN0): " << voltage << " V\n";
+  int16_t results = ads.getLastConversionResults();
 
-    close(file);
-    return 0;
+  Serial.print("Differential: "); Serial.print(results); Serial.print("("); Serial.print(ads.computeVolts(results)); Serial.println("V)");
+
+  new_data = false;
+
+  // In a real application we probably don't want to do a delay here if we are doing interrupt-based sampling, but we have a delay
+  // in this example to avoid writing too much data to the serial port.
+  delay(1000);
 }
