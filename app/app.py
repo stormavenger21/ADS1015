@@ -20,13 +20,15 @@ DEPTH = 0.0
 # Continuously read voltage
 while True:
     try: 
-        print(f"Voltage: {channel.voltage:.3f} V")
+        print(f"Voltage: \t{channel.voltage:.3f} V")
         
         PRESSURE = (channel.voltage-(VCC*0.1)) / (VCC*0.75)
-        print(f"Pressure: {PRESSURE:.2f} Mpa")
+        if(PRESSURE < 0.0):
+            pressure = 0.0
+        print(f"Pressure: \t{PRESSURE:.2f} Mpa")
 
         DEPTH = (PRESSURE*1000000)/(WATER_DENSITY/ACCELERATION)
-        print(f"Depth : {DEPTH:.2f} m")
+        print(f"Depth: \t{DEPTH:.2f} m\n")
     except:
         print("Error Reading Pressure Sensor")
     time.sleep(0.5)
