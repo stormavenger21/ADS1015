@@ -37,3 +37,7 @@ def depth(ADC_ch):
         print(f"Depth: \t\t{DEPTH:.2f} m\n")
     except:
         print("Error Reading Pressure Sensor")
+
+
+if __name__=='__main__':
+    main()
