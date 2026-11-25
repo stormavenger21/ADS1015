@@ -1,5 +1,7 @@
 import time
 import board
+import io
+import sys
 from adafruit_ads1x15 import ADS1015, AnalogIn, ads1x15
 
 
