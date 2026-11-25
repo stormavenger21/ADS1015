@@ -16,7 +16,7 @@ def main():
     
     # Select channel A0
     channel0 = AnalogIn(ads, ads1x15.Pin.A0)
-    while(0):
+    while True:
         print(f"Voltage: \t{ADC_ch.voltage:.3f} V")
         time.sleep(0.01)
     #depth(channel0)
@@ -41,5 +41,5 @@ def depth(ADC_ch):
         print("Error Reading Pressure Sensor")
 
 
-if __name__=='__main__':
+if __name__=="__main__":
     main()
