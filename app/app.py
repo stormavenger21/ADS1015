@@ -14,7 +14,9 @@ def main():
     
     # Select channel A0
     channel0 = AnalogIn(ads, ads1x15.Pin.A0)
-    print(f"Voltage: \t{ADC_ch.voltage:.3f} V")    
+    while(0):
+        print(f"Voltage: \t{ADC_ch.voltage:.3f} V")
+        time.sleep(0.01)
     #depth(channel0)
 
 def depth(ADC_ch):
